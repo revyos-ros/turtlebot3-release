@@ -1,3 +1,34 @@
+## turtlebot3 (humble) - 2.1.5-2
+
+The packages in the `turtlebot3` repository were released into the `humble` distro by running `/home/z572/gits/revyos-ros/venv2/bin/bloom-release -r humble turtlebot3 --override-release-repository-push-url git@github.com:revyos-ros/turtlebot3-release.git` on `Thu, 10 Oct 2024 11:54:14 -0000`
+
+These packages were released:
+- `turtlebot3`
+- `turtlebot3_bringup`
+- `turtlebot3_cartographer`
+- `turtlebot3_description`
+- `turtlebot3_example`
+- `turtlebot3_navigation2`
+- `turtlebot3_node`
+- `turtlebot3_teleop`
+
+Version of package(s) in repository `turtlebot3`:
+
+- upstream repository: https://github.com/ROBOTIS-GIT/turtlebot3.git
+- release repository: https://github.com/revyos-ros/turtlebot3-release.git
+- rosdistro version: `2.1.5-1`
+- old version: `2.1.5-1`
+- new version: `2.1.5-2`
+
+Versions of tools used:
+
+- bloom version: `0.12.0`
+- catkin_pkg version: `1.0.0`
+- rosdep version: `0.22.2`
+- rosdistro version: `0.9.0`
+- vcstools version: `0.1.42`
+
+
 ## turtlebot3 (humble) - 2.1.5-1
 
 The packages in the `turtlebot3` repository were released into the `humble` distro by running `/usr/bin/bloom-release turtlebot3 -t humble -r humble --edit` on `Thu, 16 Jun 2022 12:21:36 -0000`
