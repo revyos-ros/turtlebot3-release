@@ -56,6 +56,7 @@ void TurtleBot3::init_dynamixel_sdk_wrapper(const std::string & usb_port)
   this->declare_parameter<uint8_t>("opencr.id");
   this->declare_parameter<int>("opencr.baud_rate");
   this->declare_parameter<float>("opencr.protocol_version");
+  this->declare_parameter<std::string>("namespace");
 
   this->get_parameter_or<uint8_t>("opencr.id", opencr.id, 200);
   this->get_parameter_or<int>("opencr.baud_rate", opencr.baud_rate, 1000000);
@@ -197,7 +198,13 @@ void TurtleBot3::add_sensors()
       is_connected_ir,
       is_connected_sonar));
 
-  sensors_.push_back(new sensors::JointState(node_handle_, "joint_states", "base_link"));
+  dxl_sdk_wrapper_->read_data_set();
+  sensors_.push_back(
+    new sensors::JointState(
+      node_handle_,
+      dxl_sdk_wrapper_,
+      "joint_states",
+      "base_link"));
 }
 
 void TurtleBot3::add_devices()
@@ -324,38 +331,76 @@ void TurtleBot3::parameter_event_callback()
 void TurtleBot3::cmd_vel_callback()
 {
   auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-  cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
+  cmd_vel_sub_ = std::make_unique<TwistSubscriber>(
+    node_handle_,
     "cmd_vel",
     qos,
-    [this](const geometry_msgs::msg::Twist::SharedPtr msg) -> void
-    {
-      std::string sdk_msg;
+    std::function<void(const geometry_msgs::msg::Twist::SharedPtr)>(
+      [this](const geometry_msgs::msg::Twist::SharedPtr msg) -> void
+      {
+        std::string sdk_msg;
 
-      union Data {
-        int32_t dword[6];
-        uint8_t byte[4 * 6];
-      } data;
+        union Data {
+          int32_t dword[6];
+          uint8_t byte[4 * 6];
+        } data;
 
-      data.dword[0] = static_cast<int32_t>(msg->linear.x * 100);
-      data.dword[1] = 0;
-      data.dword[2] = 0;
-      data.dword[3] = 0;
-      data.dword[4] = 0;
-      data.dword[5] = static_cast<int32_t>(msg->angular.z * 100);
+        data.dword[0] = static_cast<int32_t>(msg->linear.x * 100);
+        data.dword[1] = 0;
+        data.dword[2] = 0;
+        data.dword[3] = 0;
+        data.dword[4] = 0;
+        data.dword[5] = static_cast<int32_t>(msg->angular.z * 100);
 
-      uint16_t start_addr = extern_control_table.cmd_velocity_linear_x.addr;
-      uint16_t addr_length =
-      (extern_control_table.cmd_velocity_angular_z.addr -
-      extern_control_table.cmd_velocity_linear_x.addr) +
-      extern_control_table.cmd_velocity_angular_z.length;
+        uint16_t start_addr = extern_control_table.cmd_velocity_linear_x.addr;
+        uint16_t addr_length =
+        (extern_control_table.cmd_velocity_angular_z.addr -
+        extern_control_table.cmd_velocity_linear_x.addr) +
+        extern_control_table.cmd_velocity_angular_z.length;
 
-      uint8_t * p_data = &data.byte[0];
+        uint8_t * p_data = &data.byte[0];
 
-      dxl_sdk_wrapper_->set_data_to_device(start_addr, addr_length, p_data, &sdk_msg);
+        dxl_sdk_wrapper_->set_data_to_device(start_addr, addr_length, p_data, &sdk_msg);
 
-      RCLCPP_DEBUG(
-        this->get_logger(),
-        "lin_vel: %f ang_vel: %f msg : %s", msg->linear.x, msg->angular.z, sdk_msg.c_str());
-    }
+        RCLCPP_DEBUG(
+          this->get_logger(),
+          "lin_vel: %f ang_vel: %f msg : %s", msg->linear.x, msg->angular.z, sdk_msg.c_str());
+      }
+    ),
+    std::function<void(const geometry_msgs::msg::TwistStamped::SharedPtr)>(
+      [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) -> void
+      {
+        std::string sdk_msg;
+
+        union Data {
+          int32_t dword[6];
+          uint8_t byte[4 * 6];
+        } data;
+
+        data.dword[0] = static_cast<int32_t>(msg->twist.linear.x * 100);
+        data.dword[1] = 0;
+        data.dword[2] = 0;
+        data.dword[3] = 0;
+        data.dword[4] = 0;
+        data.dword[5] = static_cast<int32_t>(msg->twist.angular.z * 100);
+
+        uint16_t start_addr = extern_control_table.cmd_velocity_linear_x.addr;
+        uint16_t addr_length =
+        (extern_control_table.cmd_velocity_angular_z.addr -
+        extern_control_table.cmd_velocity_linear_x.addr) +
+        extern_control_table.cmd_velocity_angular_z.length;
+
+        uint8_t * p_data = &data.byte[0];
+
+        dxl_sdk_wrapper_->set_data_to_device(start_addr, addr_length, p_data, &sdk_msg);
+
+        RCLCPP_DEBUG(
+          this->get_logger(),
+          "lin_vel: %f ang_vel: %f msg : %s",
+          msg->twist.linear.x,
+          msg->twist.angular.z,
+          sdk_msg.c_str());
+      }
+    )
   );
 }
